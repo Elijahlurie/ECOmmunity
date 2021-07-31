@@ -1,78 +1,101 @@
 <?php
 /*
 key questions:
-- how should i style user page to make users interact and want to come back?
-- what should i put in my footer?
-- should i have a way of remembering the specific actions a user has completed? con: less simplicity
-- how do i account for different time zones (one user refreshes the page atfer midnight when it isnt midnight yet in a diff time zone)
-- should i ask for their home town? - prob not bc its more about the texting and not being on the site.
-    - ^would i ask for their location or to enter the name of their town? their zipcode?
-    -maybe use their area code
-- how do i send automated texts?
+
+- should i let them choose which time to be texted at? >> yes but wait until i know how often the site will be refreshed bc they might gt texted later than they say and get annoyed
+- will the site be available outside the US?
+  - make users put in the +1 or other phone start once i know
+- do i need a terms and conditions page?
+
+things to do:
+- make it clearer how to sign up - sign up should be bigger than login
+  - add a 'not signned up?' thing on log in page
+- figure out how to account for daylight savings time
+- on the edit profile page make the timezone dropdown default to the user's timezone not automatically pacific
+- add error message for if they have javascript disabled
+- put actual content in the about us page (problem we re fixing, what inspired us, how we come up with the actions)
+- curate an effective list of actions
+  - try to make the list good from the start bc if an action gets deleted so its id is skipped in the table, the missing id is given as an action number to a user
+- add some other greetings to messages table
+- when ready to upload site actvate the texting function
+- style the special action of the day div >> maybe include in first 'update' of the site
+- survey ppl to give them actions more relevant to their lifestyles
 */
+$sql = "SELECT * FROM users;";
+$result = mysqli_query($conn, $sql);
+$array_users = mysqli_fetch_all($result, MYSQLI_ASSOC);
 
 //sends user info from user join form to the users database
 function addUsers($connection){
-if(isset($_POST['user_submit'])/* && $_POST['name'] != "" && $_POST['phone'] != ""*/):
-    //get the id of the last user in the list and add 1 to get what the new user's id will be
-    $login_sql = "SELECT * FROM users;";
-    $login_result = mysqli_query($connection, $login_sql);
-    $array_users = mysqli_fetch_all($login_result, MYSQLI_ASSOC);
-    //give a randm number within length of actions array
-    $actions_sql = "SELECT * FROM actions;";
-    $actions_result = mysqli_query($connection, $actions_sql);
-    $array_actions = mysqli_fetch_all($actions_result, MYSQLI_ASSOC);
-    $rand = mt_rand(0,(count($array_actions)-1));
-    //add user
-    $no_space_name = str_replace(" ", "", $_POST['name']);
-    $name = ucfirst(strtolower(filter_var($no_space_name, FILTER_SANITIZE_STRING)));
-    //remove all special characters other than numbers from phone number
-    $no_space_number = str_replace(" ", "", $_POST['phone']);
-    $phone = preg_replace("/[^0-9,.]/", "", $no_space_number);
-    $error_message = "";
+  if(isset($_POST['user_submit'])):
+    //save the inputs in a session so if their inputs were wrong the computer can remember wht they had so they dot start from scratch
+    $_SESSION['input_name'] = $_POST['name'];
+    $_SESSION['input_phone'] = $_POST['phone'];
+    $_SESSION['input_timezone'] = $_POST['timezone_offset'];
+    $_SESSION['input_timestamp'] = time();
 
-    //check if phone number is the right length
-    if(strlen($phone)>= 10 && strlen($phone)<= 15){
-        //check if there is a duplicate phone number
-        $i = 0;
-        foreach($array_users as $user):
-          if($phone == $user['phone']){
-            $i+=1;
+    if($_POST['name'] != "" && $_POST['phone'] != ""){
+      //get an array of the current list of users
+      $login_sql = "SELECT * FROM users;";
+      $login_result = mysqli_query($connection, $login_sql);
+      $users_array = mysqli_fetch_all($login_result, MYSQLI_ASSOC);
+      //give a randm number within length of actions array
+      $actions_sql = "SELECT * FROM actions;";
+      $actions_result = mysqli_query($connection, $actions_sql);
+      $array_actions = mysqli_fetch_all($actions_result, MYSQLI_ASSOC);
+      $rand = mt_rand(0,(count($array_actions)-1));
+      //add user
+      $no_space_name = str_replace(" ", "", $_POST['name']);
+      $name = ucfirst(strtolower(filter_var($no_space_name, FILTER_SANITIZE_STRING)));
+      //remove all special characters other than numbers from phone number
+      $no_space_number = str_replace(" ", "", $_POST['phone']);
+      $phone = preg_replace("/[^0-9,.]/", "", $no_space_number);
+
+      $timezone = $_POST['timezone_offset'];
+      //check if phone number is the right length
+      if(strlen($phone)== 10){
+          //check if there is a duplicate phone number
+          $i = 0;
+          foreach($users_array as $user):
+            if($phone == $user['phone']){
+              $i+=1;
+            }
+          endforeach;
+          if($i == 0){
+            $sql = "INSERT INTO users (name, phone, texted, curr_action, timezone) VALUES ('$name','$phone',0,'$rand', '$timezone');";
+            $result = mysqli_query($connection, $sql);
+            //log in the new user so session id is the number right after the last user
+            //and reload the page
+
+            //run this sql again to get the updated list of users
+            $login_result = mysqli_query($connection, $login_sql);
+            $users_array = mysqli_fetch_all($login_result, MYSQLI_ASSOC);
+
+            $count_users = count($users_array);
+            $new_session_id = $users_array[$count_users-1]['id'];
+            $_SESSION['id'] = $new_session_id;
+            $_SESSION['timestamp'] = time();
+            //reset the session values for what they inputted because it's not needed anymore
+            $_SESSION['input_name'] = "First Name";
+            $_SESSION['input_phone'] = "(xxx) xxx-xxxx";
+            $_SESSION['input_timezone'] = "";
+
+            header('Location: user_page.php');
+          } else{
+            echo "<p id='signup_error'>A user with this phone number already exists.</p>";
           }
-        endforeach;
-        if($i == 0){
-          $sql = "INSERT INTO users (name, phone, texted, curr_action) VALUES ('$name','$phone',0,'$rand');";
-          $result = mysqli_query($connection, $sql);
-          //log in the new user so session id is the number right after the last user
-          //and reload the page
 
-          //****figure out how to add user, relad page, then log them in
-          $login_result = mysqli_query($connection, $login_sql);
-          $array_users = mysqli_fetch_all($login_result, MYSQLI_ASSOC);
-          $count_users = count($array_users);
-          echo $count_users;
-          $new_session_id = $array_users[$count_users-1]['id'];
-          $_SESSION['id'] = $new_session_id;
-          $_SESSION['timestamp'] = time();
-          header('Location: '.$_SERVER['REQUEST_URI']);
-        } else{
-          echo "<p id='error_message'>A user with this phone number already exists.</p>";
-        }
-
-    } else if(strlen($phone)== 7){
-      echo "<p id='error_message'>Did you include your area code?</p>";
-    }else{
-    echo "<p id='error_message'>The format for the phone number entered is invalid.</p>";
+      } else if(strlen($phone)== 7){
+        echo "<p id='signup_error'>Did you include your area code?</p>";
+      }else{
+      echo "<p id='signup_error'>The format for the phone number entered is invalid.</p>";
+      }
+    } else{
+      echo "<p id='signup_error'>An input is still empty.</p>";
     }
   endif;
 };
-function loginNewUsers(){
-  echo "dog";
-  $count_users = count($array_users);
-  $new_session_id = $array_users[$count_users-1]['id'];
-  $_SESSION['id'] = $new_session_id;
-  $_SESSION['timestamp'] = time();
-};
+
 //puts all the possible greetings from the database in an array and returns the array
 function getGreetings($connection){
   $greetings_sql = "SELECT * FROM messages;";
@@ -112,11 +135,8 @@ function returnUsers($connection, $greetings_array, $actions_array){
     $id = $user["id"];
     $new_array[] = '
       <div class="user_profile">
-        <h2>'.$user["name"].'</h2>
-        <h3>'.$user["phone"].'</h3>
-        <form method="GET" action="'.generateMessage($conn,$user,$greetings_array,$actions_array).'">
-          <button class="gen_message_button" name="generate_message_'.$id.'">Generate Message</button>
-        </form>
+        <h4>'.$user["name"].'</h4>
+        <p class="user_profile_number">'.$user["phone"].'</p>
         <p class="been_texted">'.$user["texted"].'</p>
       </div>
     ';
@@ -126,10 +146,6 @@ function returnUsers($connection, $greetings_array, $actions_array){
 
 //if a user has been texted button is set when page reloads and it hasn't been
 //pressed yet today, set texted time to time() for that user
-$sql = "SELECT * FROM users;";
-$result = mysqli_query($conn, $sql);
-$array_users = mysqli_fetch_all($result, MYSQLI_ASSOC);
-$new_array = [];
 foreach($array_users as $user){
   $button_name = 'texted_'.$user["id"];
   if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST[$button_name]) && $user['texted'] == 0){
@@ -139,26 +155,6 @@ foreach($array_users as $user){
   }
 }
 
-//generates a random message when a user is clicked on
-function generateMessage($connection, $user, $greetings_array, $actions_array){
-  $random_greeting_number = mt_rand(0,count($greetings_array)-1);
-  $random_action_number = mt_rand(0,count($actions_array)-1);
-  if(isset($_GET["generate_message_".$user["id"]])):
-    $texted_button_name = 'texted_'.$user["id"];
-    $message = $greetings_array[$random_greeting_number]." ".$user["name"]."!<br>Your eco action today is: ".$actions_array[$user['curr_action']];
-    echo "
-      <div id='user_message'>
-      <button id='user_message_x'>Close</button>
-      <br>
-      <h3>".$message.".</h3>
-      <form method='POST' action='admin.php'>
-        <button type = 'submit' name='".$texted_button_name."'>Texted them!</button>
-      </form>
-      </div>
-
-    ";
-  endif;
-};
 
 //Login for users:
 //adds 1 to $i for each user in database that the input doesn't match,
@@ -181,7 +177,6 @@ function loginUsers($connection){
           $_SESSION['timestamp'] = time();
           if($user['admin'] != 1){
             header("Location: user_page.php");
-          echo " not admin ";
           } else if($user['admin'] == 1){
             header("Location: admin.php");
           }
@@ -190,7 +185,7 @@ function loginUsers($connection){
       }
     endforeach;
     if($i === count($array_users)){
-      echo "user not found";
+      echo "<p id='login_error'>User not found</p>";
     }
   }
 };
@@ -202,6 +197,63 @@ function logOut(){
     session_destroy();
     header('Location: index.php');
   }
+};
+
+//lets users change their profiles
+function editProfile($connection){
+  if(isset($_POST['edit_profile_submit'])):
+    if($_POST['edit_name'] != "" && $_POST['edit_phone'] != ""){
+      $no_space_name = str_replace(" ", "", $_POST['edit_name']);
+      $name = ucfirst(strtolower(filter_var($no_space_name, FILTER_SANITIZE_STRING)));
+      //remove all special characters other than numbers from phone number
+      $no_space_number = str_replace(" ", "", $_POST['edit_phone']);
+      $phone = preg_replace("/[^0-9,.]/", "", $no_space_number);
+
+      $timezone = $_POST['edit_timezone_offset'];
+      //check if phone number is the right length
+      if(strlen($phone)== 10){
+          //check if there is a duplicate phone number
+
+          //get an array of the current list of users
+          $users_sql = "SELECT * FROM users;";
+          $users_result = mysqli_query($connection, $users_sql);
+          $users_array = mysqli_fetch_all($users_result, MYSQLI_ASSOC);
+
+          $i = 0;
+          foreach($users_array as $user):
+            //add one to the counter if the number entered matches another user's number who isn't the logged in user
+          if($phone == $user['phone'] && $user['id'] != $_SESSION['id']){
+              $i+=1;
+            }
+          endforeach;
+          if($i == 0){
+            if($name != $specific_user['name']){
+              $edit_name_sql = "UPDATE users SET name = '".$name."' WHERE id = ".$_SESSION['id'].";";
+              $edit_name_result = mysqli_query($connection, $edit_name_sql);
+            }
+            if($phone != $specific_user['phone']){
+              $edit_phone_sql = "UPDATE users SET phone = '".$phone."' WHERE id = ".$_SESSION['id'].";";
+              $edit_phone_result = mysqli_query($connection, $edit_phone_sql);
+            }
+            if($timezone != $specific_user['timezone']){
+              $edit_timezone_sql = "UPDATE users SET timezone = ".$timezone." WHERE id = ".$_SESSION['id'].";";
+              $edit_timezone_result = mysqli_query($connection, $edit_timezone_sql);
+            }
+
+            header('Location: '.$_SERVER['REQUEST_URI']);
+          } else{
+            echo "<p id='edit_profile_error'>Another user with this phone number already exists.</p>";
+          }
+
+      } else if(strlen($phone)== 7){
+        echo "<p id='edit_profile_error'>Did you include your area code?</p>";
+      }else{
+      echo "<p id='edit_profile_error'>The format for the phone number entered is invalid.</p>";
+      }
+    } else{
+      echo "<p id='edit_profile_error'>An input is still empty.</p>";
+    }
+  endif;
 };
 
 //when delete_account button is pressed log out, delete account, go to home page
@@ -222,7 +274,7 @@ function getTheUser($connection){
   $sql = "SELECT * FROM users WHERE id=".$_SESSION['id'].";";
   $result = mysqli_query($connection, $sql);
   $array_user = mysqli_fetch_all($result, MYSQLI_ASSOC);
-  return $array_user;
+  return $array_user[0];
 };
 
 //if logged in user doesn't exist, end session and go to home page
@@ -285,9 +337,6 @@ function addAllActions($connection){
 
 //check if day has changed and assign new random actions if it has
 function checkDay($connection){
-//get current seconds since jan 1 1970 GMT time zone and convert to nearest whole days.
-  $curr_time = time();
-  $days = ($curr_time/86400) - ($curr_time%86400)/86400;
 //get array of users from database
   $users_sql = "SELECT * FROM users;";
   $users_result = mysqli_query($connection, $users_sql);
@@ -296,33 +345,36 @@ function checkDay($connection){
   $actions_sql = "SELECT * FROM actions;";
   $actions_result = mysqli_query($connection, $actions_sql);
   $array_actions = mysqli_fetch_all($actions_result, MYSQLI_ASSOC);
-//get the value for yesterday from database
-  $sql = "SELECT * FROM main;";
-  $result = mysqli_query($connection, $sql);
-  $array_main = mysqli_fetch_all($result, MYSQLI_ASSOC);
-//if today is one more day than the value for the day in yesterday, add 1 to yesterday
+
+//if today is over value for the day in yesterday, update yesterday
 //and give each user a new random # for their action
-  if($days > $array_main[0]['yesterday']):
-    $day_sql = "UPDATE main SET yesterday = ".$days.";";
-    $day_result = mysqli_query($connection, $day_sql);
-    foreach($array_users as $user):
-      do{
-        $rand = mt_rand(0,(count($array_actions)-1));
-      }while($rand == $user['curr_action']);
-      $user_action_sql = "UPDATE users SET curr_action = ".$rand." WHERE id=".$user['id'].";";
-      $user_action_result = mysqli_query($connection, $user_action_sql);
-      $user_texted_sql = "UPDATE users SET texted = 0 WHERE id=".$user['id'].";";
-      $user_texted_result = mysqli_query($connection, $user_texted_sql);
-      //see if user completed the action yesterday
-      $completed_yesterday = $user['completed_action'];
-      //set new completed yesterday for user accordingly
-      $completed_yesterday_sql = "UPDATE users SET completed_yesterday = ".$completed_yesterday." WHERE id=".$user['id'].";";
-      $completed_yesterday_result = mysqli_query($connection, $completed_yesterday_sql);
-      //set completed_action to false
-      $completed_action_sql = "UPDATE users SET completed_action = FALSE WHERE id=".$user['id'].";";
-      $completed_action_result = mysqli_query($connection, $completed_action_sql);
+  foreach($array_users as $user):
+    //get current seconds since jan 1 1970 in the users time zone and convert to nearest whole days.
+    $user_curr_time = time() + 3600 * ($user['timezone']/100);
+    $user_days = ($user_curr_time/86400) - ($user_curr_time%86400)/86400;
+    //if the number of days since 1970 for the users timezone is greater than the value for yesterday for that user, update their actions and set days as the new value for yesterday
+    if($user_days > $user['yesterday']):
+      $day_sql = "UPDATE users SET yesterday = ".$user_days." WHERE id = ".$user['id'].";";
+      $day_result = mysqli_query($connection, $day_sql);
+      //get a random action that isn't the one they just had
+        do{
+          $rand = mt_rand(0,(count($array_actions)-1));
+        }while($rand == $user['curr_action']);
+
+        $user_action_sql = "UPDATE users SET curr_action = ".$rand." WHERE id=".$user['id'].";";
+        $user_action_result = mysqli_query($connection, $user_action_sql);
+        $user_texted_sql = "UPDATE users SET texted = 0 WHERE id=".$user['id'].";";
+        $user_texted_result = mysqli_query($connection, $user_texted_sql);
+        //see if user completed the action that day
+        $completed_yesterday = $user['completed_action'];
+        //set new completed yesterday for user accordingly
+        $completed_yesterday_sql = "UPDATE users SET completed_yesterday = ".$completed_yesterday." WHERE id=".$user['id'].";";
+        $completed_yesterday_result = mysqli_query($connection, $completed_yesterday_sql);
+        //set completed_action to false
+        $completed_action_sql = "UPDATE users SET completed_action = FALSE WHERE id=".$user['id'].";";
+        $completed_action_result = mysqli_query($connection, $completed_action_sql);
+      endif;
     endforeach;
-  endif;
 };
 checkDay($conn);
 
