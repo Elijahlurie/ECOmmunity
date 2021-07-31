@@ -16,7 +16,7 @@ include "user_join.php";
   <div id="pageWrapper">
     <?php
       include "nav_tag.php";
-      if($specific_user[0]['admin'] != 1){
+      if($specific_user['admin'] != 1){
         header("Location: index.php");
       }
      ?>
@@ -40,25 +40,13 @@ include "user_join.php";
    ?>
    <script src="scripts/scripts.js"></script>
    <script>
-
-      var user_message =  document.getElementById('user_message');
       var user_profiles = document.getElementsByClassName('user_profile');
-      var gen_message_button = document.getElementsByClassName('gen_message_button');
       var texted = document.getElementsByClassName('been_texted');
       for(var i = 0; i<user_profiles.length; i++){
         if(texted[i].textContent != 0){
           user_profiles[i].style.backgroundColor = "#ed6666";
-          gen_message_button[i].textContent = "Generate Message (this user has already been texted)";
         }
       }
-
-    var user_message_x = document.getElementById('user_message_x');
-      function closeMessage(){
-        user_message.style.display = "none";
-      };
-
-        user_message_x.addEventListener("click", closeMessage);
-
    </script>
 </body>
 </html>

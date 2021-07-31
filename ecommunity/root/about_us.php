@@ -24,6 +24,7 @@ include "user_join.php";
     <p>This website is simple for a reason. The goal is to recieve a simple text each day, and press completed action on here if u want.</p>
     <p id="quote">“You cannot get through a single day without having an impact on the world around you. What you do makes a difference and you have to decide what kind of a difference you want to make.”
 —Jane Goodall</p>
+<p>add some vids/pics of the knowledgeable people and their reasons for suggesting the actions we give</p>
   </div>
   <img id="earthrise" src="images/earthrise.jpg" width="50%" alt="Earth rising over moon horizon">
 </div>
