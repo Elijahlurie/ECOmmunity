@@ -1,22 +1,18 @@
-//if on a mobile device have nav tag taller to make room for compression
-var eco_title = document.getElementById('ecommunity_title');
-if(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)){
-  console.log("mobile");
-  eco_title.style.display = 'none';
-}else{
-  console.log("not mobile");
-}
 
 var hello_user = document.getElementById('hello_user');
 var user_links = document.getElementById('user_links');
 
-var delete_div = document.getElementById('delete_div');
+var delete_div_container = document.getElementById('delete_div_container');
 var delete_div_content = document.getElementById('delete_div_content');
-var delete_link = document.getElementById('delete_link');
+var delete_link = document.getElementsByClassName('delete_link')[0];
 var cancel_delete = document.getElementById('cancel_delete');
 
-//opens a hidden div when a certain element is clicked on and hides the div again
-//when the element clicked on or any space ouside the div are clicked on
+var user_join_form = document.getElementById('user_join_form');
+var why_zipcode_link = document.getElementById('why_zipcode_link');
+
+//opens a hidden div when a certain element is clicked on and hides the div again when the element clicked on or any space ouside the div are clicked on
+//doesnt close the opened div if one of the optional_third or optional_fourth are clicked
+//if true is entered for closes_itself argument, clicking on the opened div closes it.
 var openDivs = function(clicked, div, display, closes_itself, optional_third, optional_fourth){
   var open = function(){
     div.style.display = display;
@@ -47,11 +43,23 @@ var openDivs = function(clicked, div, display, closes_itself, optional_third, op
   clicked.addEventListener("click", open);
   document.addEventListener("click", close);
 };
-openDivs(hello_user, user_links, 'table', true, delete_link, delete_div);
-openDivs(delete_link, delete_div, 'block', true, delete_div_content);
 
 
+//only call the function for the user links stuff if the user is logged in
+//and only call the function for the sign up form zipcode explanation if user not logged in
+if(hello_user){
+  //allow user to click name in top right to open menu
+  openDivs(hello_user, user_links, 'table', true, delete_link, delete_div_container);
+  //call for the delete acount link
+  openDivs(delete_link, delete_div_container, 'block', true, delete_div_content);
+}
+
+//opendivs didnt work perfectly in this case so had to add some code here
 function cancelDelete(){
-  delete_div.style.display = "none";
+  delete_div_container.style.display = "none";
+  //call the same openDivs function again so delete div will open right away if delete link is clicked again
+  openDivs(delete_link, delete_div_container, 'block', true, delete_div_content);
 };
-cancel_delete.addEventListener("click", cancelDelete);
+if(hello_user){
+  cancel_delete.addEventListener("click", cancelDelete);
+}
